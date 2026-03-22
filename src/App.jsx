@@ -11,6 +11,9 @@ function App() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
 
+  // ✅ ADDED: API URL from .env
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const handleAnalyze = async () => {
     if (!code.trim()) {
       setError('Please enter some code to analyze.');
@@ -21,7 +24,8 @@ function App() {
     setError('');
     
     try {
-      const response = await axios.post('http://localhost:5000/analyze', {
+      // ✅ UPDATED: using API_URL
+      const response = await axios.post(`${API_URL}/analyze`, {
         code,
         language
       });
