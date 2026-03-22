@@ -12,7 +12,7 @@ function App() {
   const [error, setError] = useState('');
 
   // ✅ ADDED: API URL from .env
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "https://smart-code-debugger-backend.onrender.com";
 
   const handleAnalyze = async () => {
     if (!code.trim()) {
