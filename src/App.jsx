@@ -1,18 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Play, AlertCircle, Zap, Clock, Code2 } from 'lucide-react';
 import './App.css';
 
+// Simple hash function for caching
+const getHash = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash.toString(16);
+};
+
 function App() {
+  // Removed initial localStorage loading for code to clear it every new opening
   const [code, setCode] = useState('');
-  const [language, setLanguage] = useState('javascript');
-  const [activeTab, setActiveTab] = useState('bugs');
+  const [language, setLanguage] = useState(() => localStorage.getItem('scd_language') || 'javascript');
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('scd_tab') || 'bugs');
+  
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
 
+  // Persist state to localStorage on changes
+  useEffect(() => {
+    localStorage.setItem('scd_code', code);
+  }, [code]);
+
+  useEffect(() => {
+    localStorage.setItem('scd_language', language);
+  }, [language]);
+
+  useEffect(() => {
+    localStorage.setItem('scd_tab', activeTab);
+  }, [activeTab]);
+
   // ✅ ADDED: API URL from .env
-  const API_URL = import.meta.env.VITE_API_URL || "https://smart-code-debugger-backend.onrender.com";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const handleAnalyze = async () => {
     if (!code.trim()) {
@@ -20,18 +46,32 @@ function App() {
       return;
     }
 
+    const cacheKey = `cache_${language}_${getHash(code)}`;
+    const savedResult = localStorage.getItem(cacheKey);
+    
+    if (savedResult) {
+       console.log("Frontend: Cache hit!");
+       setResults(JSON.parse(savedResult));
+       setError('');
+       return;
+    }
+
     setLoading(true);
     setError('');
     
     try {
-      // ✅ UPDATED: using API_URL
+      // ✅ UPDATED: using API_URL and pure backend key system
       const response = await axios.post(`${API_URL}/analyze`, {
         code,
         language
       });
+      
       setResults(response.data);
+      // Cache the result
+      localStorage.setItem(cacheKey, JSON.stringify(response.data));
+      
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to analyze code. Please ensure the backend is running.');
+      setError(err.response?.data?.error || 'Failed to analyze code. Please ensure the backend is running and the API key is configured.');
     } finally {
       setLoading(false);
     }
@@ -44,7 +84,9 @@ function App() {
           <Code2 size={28} className="logo-icon" />
           <h1>Smart Code Debugger</h1>
         </div>
-        <div className="badge">AI-Powered Analysis</div>
+        <div className="header-actions">
+           <div className="badge">AI-Powered Analysis</div>
+        </div>
       </header>
 
       <main className="main-content">
@@ -86,6 +128,7 @@ function App() {
             />
           </div>
         </div>
+
 
         <div className="results-section glass-panel">
           {error && (
